@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import axios from 'axios';
 import './App.css';
 
 class App extends Component {
@@ -6,9 +7,17 @@ class App extends Component {
     super(props);
 
     this.state = {
-      buyItems: ['milk', 'bread', 'fruits'],
-      message: ''
+      buyItems: [],
+      message: '',
     }
+  }
+
+  componentDidMount() {
+    return axios.get('https://us-central1-shop-list-b60aa.cloudfunctions.net/getItems').then((response) => {
+      this.setState({
+        buyItems: response.data
+      })
+    })
   }
 
   addItem(event) {
@@ -22,13 +31,17 @@ class App extends Component {
       this.setState({
         message: 'This item is already on the list'
       })
+
     } else {
-      newItem !== '' & this.setState({
-        buyItems: [...this.state.buyItems, newItem],
-        message: ''
+      return newItem !== '' && axios.post('https://us-central1-shop-list-b60aa.cloudfunctions.net/addItem', { item: newItem }).then((response) => {
+        this.setState({
+          buyItems: response.data,
+          message: ''
+        })
+        this.addForm.reset()
       })
     }
-    this.addForm.reset()
+
   }
 
   removeItem(item){
@@ -36,8 +49,10 @@ class App extends Component {
       return item !== buyItems
     })
 
-    this.setState({
-      buyItems: [...newBuyItems]
+    return axios.delete(`https://us-central1-shop-list-b60aa.cloudfunctions.net/deleteItem?id=${item.id}`).then((response) => {
+      this.setState({
+        buyItems: response.data
+      })
     })
 
     if(newBuyItems.length === 0){
@@ -54,9 +69,55 @@ class App extends Component {
     })
   }
 
+  renderItems() {
+    let id = 1;
+    const { buyItems, message } = this.state;
+
+    return (
+      buyItems.length > 0 &&
+      <table className="table">
+        <caption>Shopping List</caption>
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Item</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            buyItems.map(item => {
+              return (
+                <tr key={item.id}>
+                  <th scope="row">{id++}</th>
+                  <td>{item.item}</td>
+                  <td>
+                    <button onClick={(e) => this.removeItem(item)}  type="button" className="btn btn-default btn-sm">
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              )
+            })
+          }
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan="2">&nbsp;</td>
+            <td>
+              <button onClick={(e) => this.clearAll()}
+              className="btn btn-default btn-sm">Clear List</button>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    )
+  }
+
+
 
   render() {
-    const { buyItems, message } = this.state
+    const { buyItems, message } = this.state;
     return (
       <div className="container">
         <h1>Shopping List</h1>
@@ -73,45 +134,9 @@ class App extends Component {
           {
             (message !== '' || buyItems.length === 0) && <p className="message text-danger">{message}</p>
           }
-        {
-          buyItems.length > 0 &&
-        <table className="table">
-          <caption>Shopping List</caption>
-          <thead>
-            <tr>
-              <th scope="col">#</th>
-              <th scope="col">Item</th>
-              <th scope="col">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {
-              buyItems.map(item => {
-                return (
-                  <tr key={item}>
-                    <th scope="row">1</th>
-                    <td>{item}</td>
-                    <td>
-                      <button onClick={(e) => this.removeItem(item)}  type="button" className="btn btn-default btn-sm">
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })
-            }
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan="2">&nbsp;</td>
-              <td>
-                <button onClick={(e) => this.clearAll()}
-                className="btn btn-default btn-sm">Clear List</button>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-        }
+
+         {this.renderItems()}
+
         </div>
       </div>
     );
